@@ -7,7 +7,6 @@ source_tickers:
   - SPY
   - IWM
   - EFA
-other_etfs: []
 interval: "1h"
 # the single ticker to predict (target)
 target: "IVV"
