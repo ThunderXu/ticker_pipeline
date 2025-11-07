@@ -1,0 +1,30 @@
+# Default configuration for the generic ticker prediction pipeline
+source_tickers:
+  - SCHB
+  - QQQ
+  - VOO
+  - VXF
+  - SPY
+  - IWM
+  - EFA
+other_etfs: []
+interval: "1h"
+# the single ticker to predict (target)
+target: "IVV"
+# default file paths (change as needed)
+raw_csv: "raw_ticker_changes.csv"
+engineered_csv: "engineered_ticker.csv"
+model_out: "ticker_model.pth"
+trainer:
+  batch_size: 64
+  epochs: 200
+  lr: 0.001
+  train_ratio: 0.8
+feature_selection:
+  enabled: true
+  max_features: 5
+  epochs: 20
+  batch_size: 64
+  lr: 0.001
+skip_crawler: false
+skip_feature_engineering: false
