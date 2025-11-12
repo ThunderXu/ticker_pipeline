@@ -4,7 +4,7 @@ from typing import Optional
 import yaml
 import os
 from typing import Optional
-
+import pandas as pd
 import yaml
 
 from ticker_data_crawler import StockDataCrawler
@@ -82,6 +82,8 @@ def run_pipeline_from_config(config_path: Optional[str] = None):
     trainer_cfg = cfg.get("trainer", {})
     skip_crawler = cfg.get("skip_crawler", False)
     skip_feature_engineering = cfg.get("skip_feature_engineering", False)
+    skip_feature_selection = cfg.get("skip_feature_selection", False)
+    skip_training = cfg.get("skip_training", False)
 
     if not skip_crawler:
         # 1) fetch raw changes
@@ -107,43 +109,46 @@ def run_pipeline_from_config(config_path: Optional[str] = None):
             return
         print(f"Feature engineering produced {len(engineered_df)} rows -> {eng_csv}")
 
-    # Optional: feature selection (configurable)
-    selection_cfg = cfg.get("feature_selection", {})
-    if selection_cfg.get("enabled", True):
-        max_feats = selection_cfg.get("max_features", 5)
-        # pass through some eval params (epochs, batch_size, lr)
-        eval_params = {
-            "epochs": selection_cfg.get("epochs", 20),
-            "batch_size": selection_cfg.get("batch_size", 64),
-            "lr": selection_cfg.get("lr", 1e-3),
-        }
-        print(f"Running feature selection (max_features={max_feats})...")
-        try:
-            selected, best_acc, history = fs.run_feature_selection(
-                eng_csv, max_features=max_feats, target_col=target, **eval_params
-            )
-        except Exception as e:
-            print(f"Feature selection failed: {e}. Continuing with full feature set.")
-            selected = []
-            best_acc = 0.0
+    if not skip_feature_selection:
+        # Optional: feature selection (configurable)
+        selection_cfg = cfg.get("feature_selection", {})
+        if selection_cfg.get("enabled", True):
+            max_feats = selection_cfg.get("max_features", 5)
+            # pass through some eval params (epochs, batch_size, lr)
+            eval_params = {
+                "epochs": selection_cfg.get("epochs", 20),
+                "batch_size": selection_cfg.get("batch_size", 64),
+                "lr": selection_cfg.get("lr", 1e-3),
+            }
+            print(f"Running feature selection (max_features={max_feats})...")
+            try:
+                selected, best_acc, history = fs.run_feature_selection(
+                    eng_csv, max_features=max_feats, target_col=target, **eval_params
+                )
+            except Exception as e:
+                print(f"Feature selection failed: {e}. Continuing with full feature set.")
+                selected = []
+                best_acc = 0.0
 
-        print(f"Feature selection result: selected={selected}, best_acc={best_acc:.4f}")
-        if selected:
-            # reduce engineered_df to selected tickers columns + target and overwrite eng_csv
-            reduced = fs._select_columns_for_tickers(engineered_df, selected, target_col=target)
-            reduced.to_csv(eng_csv)
-            print(f"Engineered CSV reduced to selected features and saved to {eng_csv} (rows={len(reduced)})")
+            print(f"Feature selection result: selected={selected}, best_acc={best_acc:.4f}")
+            if selected:
+                engineered_df = pd.read_csv(eng_csv, index_col=0)
+                # reduce engineered_df to selected tickers columns + target and overwrite eng_csv
+                reduced = fs._select_columns_for_tickers(engineered_df, selected, target_col=target)
+                reduced.to_csv(eng_csv)
+                print(f"Engineered CSV reduced to selected features and saved to {eng_csv} (rows={len(reduced)})")
 
-    # 3) train
-    bs = trainer_cfg.get("batch_size", 64)
-    epochs = trainer_cfg.get("epochs", 200)
-    lr = trainer_cfg.get("lr", 1e-3)
-    train_ratio = trainer_cfg.get("train_ratio", 0.8)
+    if not skip_training:
+        # 3) train
+        bs = trainer_cfg.get("batch_size", 64)
+        epochs = trainer_cfg.get("epochs", 200)
+        lr = trainer_cfg.get("lr", 1e-3)
+        train_ratio = trainer_cfg.get("train_ratio", 0.8)
 
-    trainer = Trainer(engineered_csv=eng_csv, batch_size=bs, epochs=epochs, lr=lr, train_ratio=train_ratio, target_col=target)
-    model = trainer.train()
-    print("saving model to", model_out)
-    trainer.save_model(model_out)
+        trainer = Trainer(engineered_csv=eng_csv, batch_size=bs, epochs=epochs, lr=lr, train_ratio=train_ratio, target_col=target)
+        model = trainer.train()
+        print("saving model to", model_out)
+        trainer.save_model(model_out)
 
 
 if __name__ == "__main__":
