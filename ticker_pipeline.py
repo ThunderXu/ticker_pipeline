@@ -9,9 +9,8 @@ import yaml
 
 from ticker_data_crawler import StockDataCrawler
 from feature_engineering import FeatureEngineer
-import feature_selection as fs
+from feature_selection import FeatureSelector
 from ticker_trainer import Trainer
-
 
 def load_config(path: Optional[str] = None) -> dict:
     """Load pipeline configuration from YAML. If path is None, load `config.yaml` next to this file."""
@@ -110,6 +109,7 @@ def run_pipeline_from_config(config_path: Optional[str] = None):
         print(f"Feature engineering produced {len(engineered_df)} rows -> {eng_csv}")
 
     if not skip_feature_selection:
+        feature_selector = FeatureSelector()
         # Optional: feature selection (configurable)
         selection_cfg = cfg.get("feature_selection", {})
         if selection_cfg.get("enabled", True):
@@ -122,7 +122,8 @@ def run_pipeline_from_config(config_path: Optional[str] = None):
             }
             print(f"Running feature selection (max_features={max_feats})...")
             try:
-                selected, best_acc, history = fs.run_feature_selection(
+                # call the module-level helper (tests patch feature_selection.run_feature_selection)
+                selected, best_acc, history = feature_selector.run_feature_selection(
                     eng_csv, max_features=max_feats, target_col=target, **eval_params
                 )
             except Exception as e:
@@ -132,9 +133,10 @@ def run_pipeline_from_config(config_path: Optional[str] = None):
 
             print(f"Feature selection result: selected={selected}, best_acc={best_acc:.4f}")
             if selected:
+                
                 engineered_df = pd.read_csv(eng_csv, index_col=0)
                 # reduce engineered_df to selected tickers columns + target and overwrite eng_csv
-                reduced = fs._select_columns_for_tickers(engineered_df, selected, target_col=target)
+                reduced = feature_selector.select_columns_for_tickers(engineered_df, selected, target_col=target)
                 reduced.to_csv(eng_csv)
                 print(f"Engineered CSV reduced to selected features and saved to {eng_csv} (rows={len(reduced)})")
 
