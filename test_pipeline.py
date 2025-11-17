@@ -58,7 +58,7 @@ def test_run_pipeline_happy_path(tmp_path):
          patch.object(pipeline.StockDataCrawler, "save_to_csv", new=fake_save), \
          patch.object(pipeline.Trainer, "train", new=fake_train), \
          patch.object(pipeline.Trainer, "save_model", new=fake_save_model), \
-         patch("feature_selection.run_feature_selection", return_value=(['AAPL'], 0.99, [])):
+         patch.object(pipeline.FeatureSelector, "run_feature_selection", return_value=(['AAPL'], 0.99, [])):
 
         # run pipeline using the YAML config
         pipeline.run_pipeline_from_config(str(cfg_path))
@@ -110,7 +110,7 @@ def test_pipeline_respects_skip_flags(tmp_path, skip_crawler, skip_fe, skip_fs, 
          patch.object(pipeline.StockDataCrawler, "save_to_csv", autospec=True) as mock_save_csv, \
          patch.object(pipeline.FeatureEngineer, "process_file", autospec=True) as mock_fe_process, \
          patch.object(pipeline.pd, "read_csv", autospec=True) as mock_read_csv, \
-         patch("feature_selection.run_feature_selection", autospec=True) as mock_fs_run, \
+         patch.object(pipeline.FeatureSelector, "run_feature_selection", autospec=True) as mock_fs_run, \
          patch.object(pipeline.Trainer, "train", autospec=True) as mock_train, \
          patch.object(pipeline.Trainer, "save_model", autospec=True) as mock_save_model:
 

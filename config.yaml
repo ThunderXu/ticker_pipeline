@@ -25,7 +25,7 @@ feature_selection:
   epochs: 20
   batch_size: 64
   lr: 0.001
-skip_crawler: true
-skip_feature_engineering: true
-skip_feature_selection: true
+skip_crawler: false
+skip_feature_engineering: false
+skip_feature_selection: false
 skip_training: false
