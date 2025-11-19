@@ -9,7 +9,7 @@ from feature_engineering import FeatureEngineer
 
 def make_ohlc_df(num_rows=6):
     # create a simple increasing OHLC so that Close-Open positive
-    idx = pd.date_range(end=pd.Timestamp.now(), periods=num_rows, freq='H')
+    idx = pd.date_range(end=pd.Timestamp.now(), periods=num_rows, freq='h')
     open_ = np.linspace(100.0, 105.0, num_rows)
     close = open_ + 0.5  # always positive change
     df = pd.DataFrame({'Open': open_, 'High': close + 0.1, 'Low': open_ - 0.1, 'Close': close}, index=idx)
@@ -23,7 +23,7 @@ def test_predict_once_alignment(tmp_path, monkeypatch):
 
     # build a raw historical df for engineering
     # index aligned timestamps
-    idx = pd.date_range(end=pd.Timestamp.now(), periods=10, freq='H')
+    idx = pd.date_range(end=pd.Timestamp.now(), periods=10, freq='h')
     data = {}
     for t in tickers + [target]:
         data[t] = np.linspace(1.0, 2.0, len(idx))
@@ -73,7 +73,7 @@ def test_predict_missing_feature(tmp_path, monkeypatch):
     tickers_live = ['A', 'B', 'C']
     target = 'T'
 
-    idx = pd.date_range(end=pd.Timestamp.now(), periods=10, freq='H')
+    idx = pd.date_range(end=pd.Timestamp.now(), periods=10, freq='h')
     data = {}
     for t in tickers_train + [target]:
         data[t] = np.linspace(1.0, 2.0, len(idx))

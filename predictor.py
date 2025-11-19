@@ -240,51 +240,6 @@ def save_prediction_row(row: dict, out_csv: str = DEFAULT_PREDICTIONS_CSV):
     df_new.to_csv(out_csv, mode="a", index=False, header=False)
 
 
-def main_once(cfg_path: Optional[str] = None):
-    cfg = load_config(cfg_path)
-    eng_csv = cfg.get("engineered_csv", "engineered_ticker.csv")
-    model_out = cfg.get("model_out", "ticker_model.pth")
-    interval = cfg.get("interval", "1h")
-    predict_seconds = cfg.get("predict_interval_seconds") or interval_to_seconds(interval)
-
-    scaler, feature_cols = fit_scaler_from_engineered(eng_csv, target_col=cfg.get("target", "target"))
-
-    # infer input_dim
-    df_eng = pd.read_csv(eng_csv, index_col=0)
-    input_dim = df_eng.drop(columns=[cfg.get("target", "target")]).shape[1]
-    model = load_model_weights(model_out, input_dim)
-
-    result = predict_once(cfg, model, scaler, feature_cols)
-    if not result.get("ok"):
-        print("Prediction aborted:", result.get("reason"))
-        return
-
-    print(f"Predicted prob={result['pred_prob']:.4f} label={result['pred_label']}")
-    row = {
-        "timestamp": result["pred_at"],
-        "pred_prob": result["pred_prob"],
-        "pred_label": result["pred_label"],
-        "actual_label": None,
-        "outcome": None,
-    }
-    save_prediction_row(row)
-
-    # Wait one prediction interval and fetch actual
-    wait = predict_seconds
-    print(f"Waiting {wait} seconds to fetch actual label...")
-    time.sleep(wait)
-
-    actual = get_actual_label_for_last_interval(cfg.get("source_tickers", []) + cfg.get("other_etfs", []), cfg.get("target", "target"), interval)
-    if actual is None:
-        print("Could not fetch actual label after waiting")
-        return
-
-    row["actual_label"] = actual
-    row["outcome"] = int(row["pred_label"] == actual)
-    save_prediction_row(row)
-    print(f"Actual label={actual} -> outcome={row['outcome']}")
-
-
 def run_loop(cfg_path: Optional[str] = None, once: bool = False, dry_run: bool = False):
     cfg = load_config(cfg_path)
     interval = cfg.get("interval", "1h")
